@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+     <record id="mail_send_create_notification" model="mail.activity.type">
+            <field name="name">Create Request</field>
+            <field name="icon">fa-car</field>
+            <field name="res_model">request.request</field>
+        </record>
+
+</odoo>
