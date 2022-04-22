@@ -200,9 +200,12 @@
                             <group>
                                 <group name="group_info_left">
                                     <field name="email_from"/>
+                                    <field name ="stage_invisible" invisible="1"/>
+                                    <field name ="can_closed"/>
                                     <field name="email_cc"/>
                                     <field name="channel_id" widget="many2one"/>
-                                    <field name="project_id" widget="many2one" />
+                                    <field name="project_id" widget="many2one" attrs="{'invisible': [('stage_invisible', '=', False)]}" />
+                                    <field name="project_manager" force_save="1" readonly="1" attrs="{'invisible': [('stage_invisible', '=', False)]}" />
                                 </group>
 
                                 <group name="group_info_right"/>

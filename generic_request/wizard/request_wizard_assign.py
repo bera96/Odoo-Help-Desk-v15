@@ -1,4 +1,5 @@
 from multiprocessing.dummy import active_children
+from odoo.exceptions import UserError
 from odoo import models, fields
 
 
@@ -39,26 +40,34 @@ class RequestWizardAssign(models.TransientModel):
     def do_assign(self):
         self.ensure_one()
         self.request_ids.ensure_can_assign()
-        self._do_assign()
-       
-        if self.request_ids.project_id:
-            request = self.request_ids
 
-            values = {
-                'name':request.name,
-                'project_id':request.project_id.id,
-                'date_deadline':self.request_ids.deadline_date,
-                'user_ids':self.user_id,
-                'request_text':self.request_ids.request_text[3:][:-4]
-            }
-            for rec in self.request_ids.project_id:
-                print(rec.stage_id.name)
-            for rec in self.request_ids:
-                rec.action_notify(self.comment)
-            self.env['project.task'].create(values)
+        if self.request_ids.project_id:
+            self._do_assign()
+            pass
+        else:
+            raise UserError("Select a project first")
+       
+        # if self.request_ids.project_id:
+        #     request = self.request_ids
+
+        #     values = {
+        #         'name':request.name,
+        #         'project_id':request.project_id.id,
+        #         'date_deadline':self.request_ids.deadline_date,
+        #         'user_ids':self.user_id,
+        #         'request_text':self.request_ids.request_text[3:][:-4]
+        #     }
+
+        #     tasks = self.env['project.task.type'].search(['project_ids','=',request.project_id.id])
+        #     for rec in tasks:
+        #         print(rec.name)
+            
+        #     for rec in self.request_ids:
+        #         rec.action_notify(self.comment)
+        #     self.env['project.task'].create(values)
+
             # self.env['project.task'].activity_schedule('project.mt_task_new',user_id = self.user_id.id, note = self.comment)
-        # activity_type = self.env.ref('generic_request.printer_request_mail_activity_call')
-        # self.activity_schedule('generic_request.mail_send_create_notification',user_id = self.user_id.id, note = self.comment)
+            # self.activity_schedule('generic_request.mail_send_create_notification',user_id = self.user_id.id, note = self.comment)
         if self.comment:
             for request in self.request_ids:
                 request.message_post(body=self.comment)

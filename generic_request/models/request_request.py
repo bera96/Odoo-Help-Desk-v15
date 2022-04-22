@@ -1,7 +1,10 @@
 # pylint:disable=too-many-lines
 from cgi import print_directory
+from email.policy import default
+from hashlib import new
 import logging
 from datetime import datetime
+import re
 
 from requests import request
 from odoo import models, fields, api, tools, _, http, exceptions, SUPERUSER_ID
@@ -49,6 +52,13 @@ class RequestRequest(models.Model):
         related='type_id.note_html', readonly=True, string="Note")
     active = fields.Boolean(default=True, index=True)
     project_id = fields.Many2one('project.project')
+    project_manager = fields.Many2one(related='project_id.user_id', store=True)
+    stage_invisible = fields.Boolean(default=True, compute="_project_visible_status")
+    can_closed = fields.Boolean(default=True)
+    
+
+
+    
 
     # Priority
     _priority = fields.Char(
@@ -162,7 +172,6 @@ class RequestRequest(models.Model):
     request_text_sample = fields.Text(
         compute="_compute_request_text_sample", tracking=True,
         string='Request text')
-
     deadline_date = fields.Date('Deadline')
     deadline_state = fields.Selection(selection=[
         ('ok', 'Ok'),
@@ -276,8 +285,19 @@ class RequestRequest(models.Model):
          'Request name must be unique.'),
     ]
 
+    @api.depends('stage_id')
+    def _project_visible_status(self):
+        current_stage_id = self.stage_id.id
+        for rec in self:
+            first_stage_id = rec.type_id.start_stage_id.id
+            if current_stage_id == first_stage_id:
+                rec.stage_invisible = False
+            else:
+                rec.stage_invisible = True
+
     def action_notify(self, comment):
         self.activity_schedule('generic_request.mail_send_create_notification',user_id = self.user_id.id, note = comment)
+    
         
     @api.model
     def default_get(self, fields_list):
@@ -295,7 +315,7 @@ class RequestRequest(models.Model):
                 'generic_request.request_channel_api').id})
 
         return res
-
+    
     @api.depends('deadline_date', 'date_closed')
     def _compute_deadline_state(self):
         now = datetime.now().date()
@@ -610,28 +630,64 @@ class RequestRequest(models.Model):
             if author.commercial_partner_id != author:
                 res['partner_id'] = author.commercial_partner_id.id
         return res
+    
+    def _close_button_visibility(self):
+        for rec in self:
+            task = self.env['project.task'].search([('project_id','=',self.project_id.id),('request_id','=',self.id)])
+            last_stage = self.env['project.task.type'].search([('project_ids','in',self.project_id.id)],limit=1,order="sequence desc")
+            if task.stage_id.is_closed == True:
+                self.can_closed = True
+                return True
+            else:
+                self.can_closed = False
+                return False
+    
 
     @api.model
     def create(self, vals):
         if vals.get('type_id', False):
             r_type = self.env['request.type'].browse(vals['type_id'])
             vals = self._create_update_from_type(r_type, vals)
-
-        # if vals['project_id']:
-        #     values = {
-        #         'name':vals['name'],
-        #         'project_id':vals['project_id'],
-        #         'date_deadline':vals['deadline_date'],
-        #     }
-        #     self.env['project.task'].create(values)
-        #     print(vals)
         self_ctx = self.with_context(mail_create_nolog=False)
         request = super(RequestRequest, self_ctx).create(vals)
         request.trigger_event('created')
         return request
+    
+    def write(self, vals):
+        if vals.get('project_id',False):
+            values = {
+                'name':self.name,
+                'request_id':self.id,
+                'project_id':vals['project_id'] if vals.get('project_id') else  self.project_id.id,
+                'date_deadline':vals['deadline_date'] if vals.get('deadline_date') else self.deadline_date,
+            }
+            obj = self.env['project.task'].create(values)
+
+            # task_stage_id = []          
+            tasks = self.env['project.task'].search([('project_id','=',vals['project_id'] or self.project_id.id)])
+            first_seq = self.env['project.task.type'].search([('project_ids','in',vals['project_id'])],limit=1,order="sequence asc")
+
+            
+            # for task in tasks:
+            #     task_stage_id.append(task.stage_id.id)
+            # stage_start_id = min(set(task_stage_id))
+            obj.update({
+                'stage_id':first_seq,
+                })
+            manager_id = vals['project_manager'] if vals.get('project_manager') else self.project_manager.id
+
+            obj.user_ids = [(6,0,[manager_id])]
+            obj.activity_schedule('generic_request.mail_send_create_notification',user_id = manager_id)
+
+
+            
+
+            
+        return super(RequestRequest, self).write(vals)
 
 
 
+   
     def _get_generic_tracking_fields(self):
         """ Compute list of fields that have to be tracked
         """

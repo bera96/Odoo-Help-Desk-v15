@@ -54,6 +54,7 @@
             'crnd_wsd/static/lib/trumbowyg/dist/plugins/colors/ui/trumbowyg.colors.min.css',
             'crnd_wsd/static/src/js/trumbowyg.upload-file.js',
             'crnd_wsd/static/src/js/trumbowyg.js',
+            'crnd_wsd/static/src/js/textarea_fix.js',
             'crnd_wsd/static/src/js/blockui.js',
             'crnd_wsd/static/src/js/request_discussion.js',
             'crnd_wsd/static/src/js/request_new.js',
@@ -62,7 +63,7 @@
             'crnd_wsd/static/src/js/enable_popovers.js',
             'crnd_wsd/static/src/js/widgets.js',
             'crnd_wsd/static/src/scss/request.scss',
-            'crnd_wsd/static/src/scss/blockui_spin.css'
+            'crnd_wsd/static/src/scss/blockui_spin.css',
         ],
         'web.assets_common':[
             'crnd_wsd/static/src/js/tours/request_mail_login_portal.js'

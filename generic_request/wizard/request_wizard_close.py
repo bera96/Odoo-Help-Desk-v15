@@ -1,3 +1,4 @@
+from logging import exception
 from odoo import models, fields, api, exceptions, _
 
 
@@ -39,14 +40,18 @@ class RequestWizardClose(models.TransientModel):
 
     def action_close_request(self):
         self.ensure_one()
+        if self.request_id._close_button_visibility() == True or self.request_id.project_id.id == False:
+            
+            if self.response_text == '<p><br></p>':
+                self.response_text = False
 
-        if self.response_text == '<p><br></p>':
-            self.response_text = False
+            if self.require_response and not self.response_text:
+                raise exceptions.UserError(_("Response text is required!"))
 
-        if self.require_response and not self.response_text:
-            raise exceptions.UserError(_("Response text is required!"))
-
-        # Set response_text here, because it may be used in conditions
-        # that checks if it is allowed to move request by specified route
-        self.request_id.response_text = self.response_text
-        self.request_id.stage_id = self.close_route_id.stage_to_id
+            # Set response_text here, because it may be used in conditions
+            # that checks if it is allowed to move request by specified route
+            self.request_id.response_text = self.response_text
+            self.request_id.stage_id = self.close_route_id.stage_to_id
+        
+        else:
+            raise exceptions.UserError("You can't close it")
